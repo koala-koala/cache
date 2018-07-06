@@ -1,0 +1,71 @@
+web缓存是一种保存资源副本并在下次请求时直接使用该副本的技术。
+web缓存分为：浏览器缓存、cdn缓存、服务器缓存、数据库数据缓存。使用web缓存可以避免重新发送请求或者仅仅发送请求确认资源
+是否改变而不返回资源实体，从而减少了http请求次数、请求传输内容、资源重复利用减少带宽消耗，降低后端服务器压力。
+
+浏览器http缓存：强缓存、协商缓存、启发式缓存。
+浏览器默认会采用一个启发式的算法, 通常会取响应头的Date_value - Last-Modified_value值的10%作为缓存时间.
+我们讨论的所有关于缓存资源的问题，都仅仅针对 GET 请求。而对于 POST , DELETE , PUT 这类行为性操作通常不做任何缓存。
+强缓存命中不会发送请求到服务器，浏览器直接返回200；
+协商缓存一定会发送请求到服务器，服务器通过请求的资源首部字段验证资源是否命中协商缓存，如果命中返回304，通知客户端从
+缓存中加载资源；
+
+浏览器缓存存储位置：/Users/fu.zhang/Library/Caches/Google/Chrome/Default/Cache
+浏览器默认设置将缓存放置在内存中，但内存中的缓存会随着进程的结束而被清除，而硬盘里的缓存会被长期保留。
+
+浏览器在处理用户请求时，如果命中强缓存，浏览器会直接拉取本地缓存不会与服务器发生任何通信。如果服务器端更新了文件浏览器端
+并不知道，所以构建阶段要为静态资源加后缀，避免服务器更新了而浏览器无法同步的问题。
+
+控制强缓存的字段：（优先级由高到低）
+
+1、pragma，可选值为no-cache，会通知浏览器不直接使用缓存，一定会向服务器发送请求校验资源新鲜度，设置了pragma则一定不会命中强缓存；
+
+2、cache-control，可选值private、public、no-cache、no-store、max-age；
+max-age:指定缓存最大的有效时间；
+public:指定响应可以在代理缓存中被缓存，可以被多用户共享；
+private:响应只能在客户端中被缓存，不能放在代理缓存上；默认
+no-cache:校验新鲜度；
+no-store:不使用缓存；
+当pragma不为no-cache，cache-control不为no-cache、no-store时，max-age未过期，则命中强缓存；
+
+3、expires，设置缓存最大的有效时间，指定具体的过期时间；同时使用，cache-control会覆盖expires；
+因为服务器和客户端时间可能不一致，所以最好使用cache-control。
+
+控制协商缓存的字段：
+
+last-modified/if-modified-since，当带着if-modified-since请求资源时，服务器会检查last-modified，
+last-modified <= if-modified-since，返回一个不带实体的304响应；反之则返回资源和最新的更新时间；
+
+etag/if-none-match，etag是根据资源内容实体生成的一段hash，唯一标志资源，if-none-match是一个条件式的请求
+首部，值为上一次服务器返回的资源etag，请求时带上if-none-match字段，服务器会检查带上的etag是否在服务器的资源列表
+里，在的话则命中协商缓存，返回304，不在的话则返回200、新的etag和资源实体；
+
+etag优先级高于last-modified，etag的优势：
+1、某些情况下服务器无法获取资源的最后更新时间；
+2、文件更新过但内容未改变，使用etag可以正确缓存；
+3、last-modified只能精确到秒，如果资源在秒以内的级别修改，则无法返回最新的资源；
+
+cdn缓存就是在浏览器和服务器间增加的一层缓存，缓存一些html、图片、css、xml等静态资源；
+
+客户端浏览器先检查是否有本地缓存是否过期，如果过期则向cdn边缘节点发起请求，cdn边缘节点
+会检测用户请求数据的缓存是否过期。
+
+from disk cache
+一般非脚本文件css存放在硬盘；
+
+from memory cache
+一般脚本文件、图片、字体存放在内存；
+
+样式表一般加载一次就可以渲染页面，而js、font、image随时都可能执行，如果放在硬盘中io消耗比较大；
+
+浏览器采用最保守的缓存策略。
+
+request中设置Cache-control，值为max-age:0，一定发送请求到服务器校验新鲜度；
+值为no-cache，忽略所有缓存字段，直接向浏览器发送请求返回资源实体；
+
+response设置cache-control。
+长时间缓存可以选择expires，max-age会覆盖expires。
+
+缓存存储策略
+用来确定http响应内容是否可以被客户端缓存，以及被哪些客户端缓存。
+public、private、nocache、max-age 可以缓存
+no-store 不缓存
